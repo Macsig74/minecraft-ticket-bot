@@ -90,6 +90,11 @@ module.exports = {
     if (interaction.isButton() && interaction.customId === 'ticket_delete') {
       return handleDelete(interaction, client);
     }
+
+    // ── BOUTON TRANSCRIPT ─────────────────────────────────────────────────────
+    if (interaction.isButton() && interaction.customId === 'ticket_transcript') {
+      return handleTranscript(interaction, client);
+    } 
   },
 };
 
@@ -199,8 +204,9 @@ async function handleClose(interaction, client) {
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('ticket_reopen').setLabel('Réouvrir').setEmoji('🔓').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('ticket_transcript').setLabel('Transcript').setEmoji('📄').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('ticket_delete').setLabel('Supprimer').setEmoji('🗑️').setStyle(ButtonStyle.Danger),
-  );
+);
 
   await interaction.editReply({ embeds: [closedEmbed], components: [row] });
   await sendLog(client, { type: 'close', ticket: channel, user, category: data?.category || 'Inconnue' });
@@ -257,4 +263,82 @@ async function handleDelete(interaction, client) {
 function isStaff(member) {
   if (!config.roles.staff) return member.permissions.has('ManageChannels');
   return member.roles.cache.has(config.roles.staff) || member.permissions.has('Administrator');
+}
+
+async function handleTranscript(interaction, client) {
+  const channel = interaction.channel;
+  const user = interaction.user;
+  const data = getTicketData(channel.id);
+
+  if (!isStaff(interaction.member)) {
+    return interaction.reply({ content: '❌ Seul le staff peut générer un transcript.', flags: 64 });
+  }
+
+  await interaction.deferReply({ flags: 64 });
+
+  // Récupérer tous les messages
+  const all = [];
+  let before = undefined;
+  while (true) {
+    const batch = await channel.messages.fetch({ limit: 100, before });
+    if (batch.size === 0) break;
+    all.push(...batch.values());
+    before = batch.last().id;
+    if (batch.size < 100) break;
+  }
+  const messages = all.reverse();
+
+  // Générer le TXT
+  const lines = [
+    `═══════════════════════════════════════`,
+    `  TRANSCRIPT — #${channel.name}`,
+    `  Catégorie : ${data?.category || 'Inconnue'}`,
+    `  Généré le : ${new Date().toLocaleString('fr-FR')}`,
+    `  Par : ${user.tag ?? user.username}`,
+    `  Messages : ${messages.length}`,
+    `═══════════════════════════════════════\n`,
+  ];
+
+  for (const m of messages) {
+    const time = new Date(m.createdTimestamp).toLocaleString('fr-FR');
+    lines.push(`[${time}] ${m.author.tag ?? m.author.username}`);
+    if (m.content) lines.push(`  ${m.content}`);
+    for (const e of m.embeds) {
+      if (e.title) lines.push(`  [EMBED] ${e.title}`);
+      if (e.description) lines.push(`  ${e.description}`);
+      for (const f of e.fields) lines.push(`  • ${f.name}: ${f.value}`);
+    }
+    lines.push('');
+  }
+
+  const txt = lines.join('\n');
+
+  // Sauvegarder et envoyer
+  const fs = require('fs');
+  const path = require('path');
+  const { AttachmentBuilder } = require('discord.js');
+
+  const filePath = path.join(__dirname, '../../transcripts', `${channel.name}-${Date.now()}.txt`);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, txt, 'utf8');
+
+  const file = new AttachmentBuilder(filePath, { name: `transcript-${channel.name}.txt` });
+
+  // Envoyer dans les logs aussi
+  const logsChannel = client.channels.cache.get(config.channels.logs);
+  if (logsChannel) {
+    const logEmbed = new EmbedBuilder()
+      .setTitle('📄 Transcript généré')
+      .setColor(0x99AAB5)
+      .addFields(
+        { name: '🎫 Ticket', value: `\`${channel.name}\``, inline: true },
+        { name: '👤 Demandé par', value: `${user}`, inline: true },
+        { name: '📂 Catégorie', value: data?.category || 'Inconnue', inline: true },
+      )
+      .setTimestamp();
+
+    await logsChannel.send({ embeds: [logEmbed], files: [new AttachmentBuilder(filePath, { name: `transcript-${channel.name}.txt` })] });
+  }
+
+  await interaction.editReply({ content: '✅ Transcript généré !', files: [file] });
 }
