@@ -93,12 +93,12 @@ module.exports = async function handleCommand(interaction, client) {
   //  /later 
   if (commandName === 'later') {
     if (!isStaff(member)) {
-      return interaction.reply({ content: '❌ Tu n\'as pas la permission d\'utiliser cette commande.', ephemeral: true });
+      return interaction.reply({ content: '❌ Tu n\'as pas la permission d\'utiliser cette commande.', ephemeral: 64 });
     }
 
     const data = getTicketData(channel.id);
     if (!data) {
-      return interaction.reply({ content: '❌ Ce salon n\'est pas un ticket géré par ce bot.', ephemeral: true });
+      return interaction.reply({ content: '❌ Ce salon n\'est pas un ticket géré par ce bot.', ephemeral: 64 });
     }
 
     await interaction.deferReply();
@@ -144,7 +144,7 @@ module.exports = async function handleCommand(interaction, client) {
       return interaction.reply({ content: '❌ Seuls les administrateurs peuvent utiliser cette commande.', ephemeral: true });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ ephemeral: 64 });
 
     try {
       await sendTicketPanel(channel);
