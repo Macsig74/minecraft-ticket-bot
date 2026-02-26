@@ -9,11 +9,11 @@ Bot Discord de gestion de tickets pour serveur Minecraft — **discord.js v14**
 ### 📂 Catégories de tickets
 | Catégorie | Sous-types | Formulaire |
 |-----------|-----------|------------|
-| 📋 Recrutement | Dev / Staff / Autre | ✅ 5 questions |
-| 🐛 Bug | — | ✅ 5 questions |
-| 🆘 Soutien | — | ✅ 5 questions |
-| ❓ Questions | — | ✅ 3 questions |
-| 📬 Autres | — | ✅ 4 questions |
+| 📋 Recrutement | Dev / Staff / Autre 
+| 🐛 Bug | 
+| 🆘 Soutien | 
+| ❓ Questions | 
+| 📬 Autres | 
 
 ### ⚡ Commandes
 | Commande | Description |
@@ -22,6 +22,7 @@ Bot Discord de gestion de tickets pour serveur Minecraft — **discord.js v14**
 | `/close` | Ferme le ticket → déplace en catégorie **Fermés** |
 | `/save-candid` | Déplace la candidature en catégorie **RC (candidatures retenues)** |
 | `/later` | Met le ticket en attente + poste un embed dans **#on-a-retenu** |
+| `/give-soutien` |attribue role si conditions remplies |
 
 ### 📋 Logs automatiques
 Chaque action est loggée dans le salon `#logs` :
@@ -80,6 +81,12 @@ CHANNEL_OPEN_TICKET=id_salon_tickets
 
 # Rôle staff
 ROLE_STAFF=id_role_staff
+
+ROLE_SOUTIEN=role soutien
+SOUTIEN_STATUS_TEXT=discord.gg/aotsmp
+RCON_HOST=ip serveur
+RCON_PORT=port serveur
+RCON_PASSWORD=ton_mdp_rcon
 ```
 
 ### 4. Récupérer les IDs Discord
@@ -157,6 +164,8 @@ minecraft-ticket-bot/
 │   └── utils/
 │       ├── forms.js              # Définition des formulaires (questions)
 │       ├── logger.js             # Système de logs Discord
+│       ├── rcon.js             
+│       ├── soutienManager.js            
 │       └── ticketManager.js      # Gestion des tickets (création, déplacement)
 ├── .env                          # Variables d'environnement (à créer)
 ├── .env.example                  # Modèle de configuration
