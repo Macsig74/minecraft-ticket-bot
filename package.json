@@ -1,0 +1,14 @@
+{
+  "name": "minecraft-ticket-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord de gestion de tickets pour serveur Minecraft",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy": "node src/deploy-commands.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5"
+  }
+}
