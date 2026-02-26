@@ -3,7 +3,6 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  StringSelectMenuBuilder,
   ModalBuilder,
   TextInputBuilder,
 } = require('discord.js');
@@ -15,114 +14,86 @@ const {
   createTicketChannel,
   closeTicket,
   reopenTicket,
-  saveCandidature,
-  laterTicket,
   getTicketData,
   getTypeLabel,
-  isTicket,
 } = require('../utils/ticketManager');
 
-// PANNEAU D'OUVERTURE DE TICKET 
+// ─── PANNEAU D'OUVERTURE DE TICKET ───────────────────────────────────────────
 
 async function sendTicketPanel(channel) {
   const embed = new EmbedBuilder()
-    .setTitle('🎫 Ouvrir un ticket')
+    .setTitle('AotSMP | Support')
     .setDescription(
-      '> Sélectionne la catégorie correspondant à ta demande dans le menu ci-dessous.\n\n' +
-      '**📋 Recrutement** — Rejoindre l\'équipe (Dev, Staff, Autre)\n' +
-      '\n' +
-      '**🐛 Bug** — Signaler un problème technique\n' +
-      '\n' +
-      '**🆘 Soutien** — Besoin d\'aide ou problème de compte\n' +
-      '\n' +
-      '**❓ Questions** — Poser une question à l\'équipe\n' +
-      '\n' +
-      '**📬 Autres** — Toute autre demande\n\n' +
-      '\n' +
-      '*Un formulaire s\'ouvrira, remplis-le et ton ticket sera créé automatiquement.*'
+      'Les tickets vous permettent de contacter l\'équipe AotSMP.\n' +
+      '**N\'ouvrez un ticket que si vous en avez besoin, et évitez d\'en ouvrir plusieurs pour le même problème.**'
     )
-    .setColor(0x5865F2)
-    .setThumbnail('https://www.minecraft.net/content/dam/games/minecraft/key-art/MC_The-Wild-Update_540x304.jpg')
-    .setFooter({ text: 'Ne crée pas de ticket pour rien — respecte le staff 🙏' })
-    .setTimestamp();
+    .setImage('https://i.postimg.cc/RV4SH3gW/Capture-d-ecran-2026-02-26-221204.png')
+    .setColor(0x5865F2);
 
-  const select = new StringSelectMenuBuilder()
-    .setCustomId('ticket_category_select')
-    .setPlaceholder('📂 Choisir une catégorie...')
-    .addOptions([
-      { label: 'Recrutement', description: 'Rejoindre l\'équipe du serveur', value: 'recrutement', emoji: '📋' },
-      { label: 'Bug', description: 'Signaler un bug ou problème technique', value: 'bug', emoji: '🐛' },
-      { label: 'Soutien', description: 'Aide, réclamation, problème de compte', value: 'soutien', emoji: '🆘' },
-      { label: 'Questions', description: 'Poser une question à l\'équipe', value: 'questions', emoji: '❓' },
-      { label: 'Autres', description: 'Toute autre demande', value: 'autres', emoji: '📬' },
-    ]);
-
-  const row = new ActionRowBuilder().addComponents(select);
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('open_ticket_recrutement').setLabel('Recrutement').setEmoji('📋').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('open_ticket_bug').setLabel('Bug').setEmoji('🐛').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('open_ticket_soutien').setLabel('Soutien').setEmoji('🆘').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('open_ticket_questions').setLabel('Questions').setEmoji('❓').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('open_ticket_autres').setLabel('Autres').setEmoji('📬').setStyle(ButtonStyle.Secondary),
+  );
 
   await channel.send({ embeds: [embed], components: [row] });
 }
 
-//  HANDLER PRINCIPAL
+// ─── HANDLER PRINCIPAL ───────────────────────────────────────────────────────
 
 module.exports = {
   sendTicketPanel,
 
   async handleInteraction(interaction, client) {
 
-    // SELECT MENU CATÉGORIE 
-    if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_category_select') {
-      const value = interaction.values[0];
+    // ── BOUTON RECRUTEMENT → sous-menu ────────────────────────────────────────
+    if (interaction.isButton() && interaction.customId === 'open_ticket_recrutement') {
+      const embed = new EmbedBuilder()
+        .setTitle('📋 Recrutement — Quel poste ?')
+        .setDescription('Choisis le type de poste pour lequel tu souhaites postuler.')
+        .setColor(0x5865F2);
 
-      if (value === 'recrutement') {
-        // Afficher sous-menu recrutement
-        const embed = new EmbedBuilder()
-          .setTitle('📋 Recrutement — Quel poste ?')
-          .setDescription('Choisis le type de poste pour lequel tu souhaites postuler.')
-          .setColor(0x5865F2);
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('open_ticket_recrutement_dev').setLabel('Développeur').setEmoji('💻').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('open_ticket_recrutement_staff').setLabel('Staff').setEmoji('🛡️').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('open_ticket_recrutement_autre').setLabel('Autre poste').setEmoji('📝').setStyle(ButtonStyle.Secondary),
+      );
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('open_ticket_recrutement_dev').setLabel('Développeur').setEmoji('💻').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId('open_ticket_recrutement_staff').setLabel('Staff').setEmoji('🛡️').setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId('open_ticket_recrutement_autre').setLabel('Autre poste').setEmoji('📝').setStyle(ButtonStyle.Secondary),
-        );
-
-        return interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
-      }
-
-      // Pour les autres catégories, ouvrir directement le modal
-      return openModal(interaction, value);
+      return interaction.reply({ embeds: [embed], components: [row], ephemeral: 64 });
     }
 
-    //  BOUTONS SOUS-MENU RECRUTEMENT 
+    // ── TOUS LES AUTRES BOUTONS D'OUVERTURE → modal ───────────────────────────
     if (interaction.isButton() && interaction.customId.startsWith('open_ticket_')) {
       const type = interaction.customId.replace('open_ticket_', '');
       return openModal(interaction, type);
     }
 
-    // SOUMISSION MODAL 
+    // ── SOUMISSION MODAL ──────────────────────────────────────────────────────
     if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_form_')) {
       const type = interaction.customId.replace('ticket_form_', '');
       return handleModalSubmit(interaction, type, client);
     }
 
-    // BOUTON FERMER TICKET (dans le ticket) 
+    // ── BOUTON FERMER TICKET ──────────────────────────────────────────────────
     if (interaction.isButton() && interaction.customId === 'ticket_close') {
       return handleClose(interaction, client);
     }
 
-    //  BOUTON RÉOUVRIR 
+    // ── BOUTON RÉOUVRIR ───────────────────────────────────────────────────────
     if (interaction.isButton() && interaction.customId === 'ticket_reopen') {
       return handleReopen(interaction, client);
     }
 
-    //  BOUTON SUPPRIMER 
+    // ── BOUTON SUPPRIMER ──────────────────────────────────────────────────────
     if (interaction.isButton() && interaction.customId === 'ticket_delete') {
       return handleDelete(interaction, client);
     }
   },
 };
 
-//  OUVRIR UN MODAL 
+// ─── OUVRIR UN MODAL ─────────────────────────────────────────────────────────
 
 async function openModal(interaction, type) {
   const formDef = forms[type];
@@ -149,7 +120,7 @@ async function openModal(interaction, type) {
   await interaction.showModal(modal);
 }
 
-//  TRAITEMENT SOUMISSION MODAL 
+// ─── TRAITEMENT SOUMISSION MODAL ─────────────────────────────────────────────
 
 async function handleModalSubmit(interaction, type, client) {
   await interaction.deferReply({ ephemeral: true });
@@ -158,7 +129,6 @@ async function handleModalSubmit(interaction, type, client) {
   const guild = interaction.guild;
   const user = interaction.user;
 
-  // Créer le salon ticket
   let channel;
   try {
     channel = await createTicketChannel(guild, user, type);
@@ -167,7 +137,6 @@ async function handleModalSubmit(interaction, type, client) {
     return interaction.editReply({ content: '❌ Impossible de créer le ticket. Vérifie la config (.env) et les permissions du bot.' });
   }
 
-  // Construire l'embed des réponses
   const embed = new EmbedBuilder()
     .setTitle(`${formDef.emoji} ${formDef.label}`)
     .setDescription(`Ticket ouvert par ${user}\nUtilise les boutons ci-dessous pour gérer ce ticket.`)
@@ -176,13 +145,11 @@ async function handleModalSubmit(interaction, type, client) {
     .setTimestamp()
     .setFooter({ text: `ID: ${user.id} • Ticket créé le` });
 
-  // Ajouter les réponses du formulaire
   for (const field of formDef.fields) {
     const value = interaction.fields.getTextInputValue(field.customId) || '*Non renseigné*';
     embed.addFields({ name: field.label, value: value.slice(0, 1024), inline: false });
   }
 
-  // Bouton fermer
   const closeRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('ticket_close')
@@ -200,18 +167,11 @@ async function handleModalSubmit(interaction, type, client) {
     components: [closeRow],
   });
 
-  // Log
-  await sendLog(client, {
-    type: 'open',
-    ticket: channel,
-    user,
-    category: getTypeLabel(type),
-  });
-
+  await sendLog(client, { type: 'open', ticket: channel, user, category: getTypeLabel(type) });
   await interaction.editReply({ content: `✅ Ton ticket a été créé : <#${channel.id}>` });
 }
 
-//  FERMER UN TICKET 
+// ─── FERMER UN TICKET ────────────────────────────────────────────────────────
 
 async function handleClose(interaction, client) {
   const channel = interaction.channel;
@@ -231,7 +191,6 @@ async function handleClose(interaction, client) {
     return interaction.editReply('❌ Erreur lors de la fermeture du ticket.');
   }
 
-  // Message dans le ticket fermé
   const closedEmbed = new EmbedBuilder()
     .setTitle('🔒 Ticket Fermé')
     .setDescription(`Ce ticket a été fermé par ${user}.\n\nTu peux le **réouvrir** ou le **supprimer** ci-dessous.`)
@@ -244,23 +203,16 @@ async function handleClose(interaction, client) {
   );
 
   await interaction.editReply({ embeds: [closedEmbed], components: [row] });
-
-  await sendLog(client, {
-    type: 'close',
-    ticket: channel,
-    user,
-    category: data?.category || 'Inconnue',
-  });
+  await sendLog(client, { type: 'close', ticket: channel, user, category: data?.category || 'Inconnue' });
 }
 
-//  RÉOUVRIR UN TICKET 
+// ─── RÉOUVRIR UN TICKET ──────────────────────────────────────────────────────
 
 async function handleReopen(interaction, client) {
   const channel = interaction.channel;
   const user = interaction.user;
   const data = getTicketData(channel.id);
 
-  // Vérif staff
   if (!isStaff(interaction.member)) {
     return interaction.reply({ content: '❌ Seul le staff peut réouvrir un ticket.', ephemeral: true });
   }
@@ -281,16 +233,10 @@ async function handleReopen(interaction, client) {
     .setTimestamp();
 
   await interaction.editReply({ embeds: [embed] });
-
-  await sendLog(client, {
-    type: 'reopen',
-    ticket: channel,
-    user,
-    category: data?.category || 'Inconnue',
-  });
+  await sendLog(client, { type: 'reopen', ticket: channel, user, category: data?.category || 'Inconnue' });
 }
 
-//  SUPPRIMER UN TICKET 
+// ─── SUPPRIMER UN TICKET ─────────────────────────────────────────────────────
 
 async function handleDelete(interaction, client) {
   const channel = interaction.channel;
@@ -301,18 +247,12 @@ async function handleDelete(interaction, client) {
     return interaction.reply({ content: '❌ Seul le staff peut supprimer un ticket.', ephemeral: true });
   }
 
-  await sendLog(client, {
-    type: 'delete',
-    ticket: channel,
-    user,
-    category: data?.category || 'Inconnue',
-  });
-
+  await sendLog(client, { type: 'delete', ticket: channel, user, category: data?.category || 'Inconnue' });
   await interaction.reply({ content: '🗑️ Suppression dans 3 secondes...' });
   setTimeout(() => channel.delete().catch(console.error), 3000);
 }
 
-//  HELPER STAFF 
+// ─── HELPER STAFF ────────────────────────────────────────────────────────────
 
 function isStaff(member) {
   if (!config.roles.staff) return member.permissions.has('ManageChannels');
