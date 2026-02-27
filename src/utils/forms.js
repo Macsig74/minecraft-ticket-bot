@@ -4,7 +4,7 @@ const { TextInputStyle } = require('discord.js');
 
 module.exports = {
 
-  //  RECRUTEMENT DEV 
+  
   recrutement_dev: {
     label: '📋 Recrutement — Développeur',
     color: 0x5865F2,
@@ -53,7 +53,7 @@ module.exports = {
     ],
   },
 
-  //  RECRUTEMENT STAFF 
+  
   recrutement_staff: {
     label: '📋 Recrutement — Staff',
     color: 0x57F287,
@@ -102,7 +102,7 @@ module.exports = {
     ],
   },
 
-  //  RECRUTEMENT AUTRE 
+  
   recrutement_autre: {
     label: '📋 Recrutement — Autre poste',
     color: 0xFEE75C,
@@ -151,7 +151,7 @@ module.exports = {
     ],
   },
 
-  //  BUG 
+ 
   bug: {
     label: '🐛 Rapport de bug',
     color: 0xED4245,
@@ -200,7 +200,7 @@ module.exports = {
     ],
   },
 
-  //  SOUTIEN 
+  
   soutien: {
     label: '🆘 Demande de soutien',
     color: 0xEB459E,
@@ -225,7 +225,7 @@ module.exports = {
     ],
   },
 
-  //  QUESTIONS 
+
   questions: {
     label: '❓ Question',
     color: 0x00B0F4,
@@ -258,7 +258,7 @@ module.exports = {
     ],
   },
 
-  //  AUTRES 
+ 
   autres: {
     label: '📬 Autre demande',
     color: 0x99AAB5,

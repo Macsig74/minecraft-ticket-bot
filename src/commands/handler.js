@@ -18,15 +18,14 @@ function isStaff(member) {
 module.exports = async function handleCommand(interaction, client) {
   const { commandName, channel, member, user } = interaction;
 
-  // ── /close → ouvre le modal raison ──────────────────────────────────────────
-  // ── /close → ouvre le modal raison ──────────────────────────────────────────
+
+  //  /close → ouvre le modal raison 
   if (commandName === 'close') {
     if (!isStaff(member)) {
       return interaction.reply({ content: '❌ Tu n\'as pas la permission de fermer ce ticket.', flags: 64 });
     }
 
-    // Vérifie juste que c'est un salon texte avec un tiret dans le nom (format ticket)
-    // On retire la vérification stricte getTicketData pour les tickets déplacés
+
     const data = getTicketData(channel.id);
     if (!data && !channel.name.includes('-')) {
       return interaction.reply({ content: '❌ Ce salon ne semble pas être un ticket.', flags: 64 });
@@ -48,7 +47,7 @@ module.exports = async function handleCommand(interaction, client) {
     return interaction.showModal(modal);
   }
 
-  // ── /save-candid ─────────────────────────────────────────────────────────────
+  //  /save-candid 
   if (commandName === 'save-candid') {
     if (!isStaff(member)) {
       return interaction.reply({ content: '❌ Tu n\'as pas la permission d\'utiliser cette commande.', flags: 64 });
@@ -78,7 +77,7 @@ module.exports = async function handleCommand(interaction, client) {
     await sendLog(client, { type: 'save_candid', ticket: channel, user, category: data.category });
   }
 
-  // ── /later ────────────────────────────────────────────────────────────────────
+  //  /later 
   if (commandName === 'later') {
     if (!isStaff(member)) {
       return interaction.reply({ content: '❌ Tu n\'as pas la permission d\'utiliser cette commande.', flags: 64 });
@@ -125,7 +124,7 @@ module.exports = async function handleCommand(interaction, client) {
     await sendLog(client, { type: 'later', ticket: channel, user, category: data.category });
   }
 
-  // ── /setup-tickets ────────────────────────────────────────────────────────────
+  //  /setup-tickets 
   if (commandName === 'setup-tickets') {
     if (!member.permissions.has('Administrator')) {
       return interaction.reply({ content: '❌ Seuls les administrateurs peuvent utiliser cette commande.', flags: 64 });
@@ -141,7 +140,7 @@ module.exports = async function handleCommand(interaction, client) {
       await interaction.editReply('❌ Erreur lors de l\'envoi du panneau.');
     }
   }
-  // ── /rename ───────────────────────────────────────────────────────────────────
+  //  /rename 
 if (commandName === 'rename') {
   if (!isStaff(member)) {
     return interaction.reply({ content: '❌ Tu n\'as pas la permission de renommer ce ticket.', flags: 64 });
@@ -184,7 +183,7 @@ if (commandName === 'rename') {
   });
 }
 
-  // ── /givesoutien ──────────────────────────────────────────────────────────────
+  //  /givesoutien 
   if (commandName === 'givesoutien') {
     await interaction.deferReply({ flags: 64 });
 

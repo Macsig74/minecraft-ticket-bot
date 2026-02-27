@@ -22,7 +22,7 @@ const {
   getTypeLabel,
 } = require('../utils/ticketManager');
 
-// ─── PANNEAU D'OUVERTURE DE TICKET ───────────────────────────────────────────
+//  PANNEAU D'OUVERTURE DE TICKET 
 
 async function sendTicketPanel(channel) {
   const embed = new EmbedBuilder()
@@ -45,14 +45,13 @@ async function sendTicketPanel(channel) {
   await channel.send({ embeds: [embed], components: [row] });
 }
 
-// ─── HANDLER PRINCIPAL ───────────────────────────────────────────────────────
+//  HANDLER PRINCIPAL 
 
 module.exports = {
   sendTicketPanel,
 
   async handleInteraction(interaction, client) {
 
-    // ── BOUTON RECRUTEMENT → sous-menu ────────────────────────────────────────
     if (interaction.isButton() && interaction.customId === 'open_ticket_recrutement') {
       const embed = new EmbedBuilder()
         .setTitle('📋 Recrutement — Quel poste ?')
@@ -68,19 +67,19 @@ module.exports = {
       return interaction.reply({ embeds: [embed], components: [row], flags: 64 });
     }
 
-    // ── TOUS LES AUTRES BOUTONS D'OUVERTURE → modal ───────────────────────────
+   
     if (interaction.isButton() && interaction.customId.startsWith('open_ticket_')) {
       const type = interaction.customId.replace('open_ticket_', '');
       return openModal(interaction, type);
     }
 
-    // ── SOUMISSION MODALS TICKETS ─────────────────────────────────────────────
+    
     if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_form_')) {
       const type = interaction.customId.replace('ticket_form_', '');
       return handleModalSubmit(interaction, type, client);
     }
 
-    // ── BOUTON FERMER TICKET → modal raison ───────────────────────────────────
+    
     if (interaction.isButton() && interaction.customId === 'ticket_close') {
       const modal = new ModalBuilder()
         .setCustomId('modal_close_reason')
@@ -98,34 +97,34 @@ module.exports = {
       return interaction.showModal(modal);
     }
 
-    // ── SOUMISSION MODAL RAISON FERMETURE (bouton) ────────────────────────────
+    
     if (interaction.isModalSubmit() && interaction.customId === 'modal_close_reason') {
       return handleCloseWithReason(interaction, client);
     }
 
-    // ── SOUMISSION MODAL RAISON FERMETURE (commande /close) ───────────────────
+    
     if (interaction.isModalSubmit() && interaction.customId === 'modal_close_reason_cmd') {
       return handleCloseWithReason(interaction, client);
     }
 
-    // ── BOUTON RÉOUVRIR ───────────────────────────────────────────────────────
+    
     if (interaction.isButton() && interaction.customId === 'ticket_reopen') {
       return handleReopen(interaction, client);
     }
 
-    // ── BOUTON SUPPRIMER ──────────────────────────────────────────────────────
+    
     if (interaction.isButton() && interaction.customId === 'ticket_delete') {
       return handleDelete(interaction, client);
     }
 
-    // ── BOUTON TRANSCRIPT ─────────────────────────────────────────────────────
+    
     if (interaction.isButton() && interaction.customId === 'ticket_transcript') {
       return handleTranscript(interaction, client);
     }
   },
 };
 
-// ─── OUVRIR UN MODAL ─────────────────────────────────────────────────────────
+//  OUVRIR UN MODAL 
 
 async function openModal(interaction, type) {
   const formDef = forms[type];
@@ -152,7 +151,7 @@ async function openModal(interaction, type) {
   await interaction.showModal(modal);
 }
 
-// ─── TRAITEMENT SOUMISSION MODAL TICKET ──────────────────────────────────────
+
 
 async function handleModalSubmit(interaction, type, client) {
   await interaction.deferReply({ flags: 64 });
@@ -203,7 +202,7 @@ async function handleModalSubmit(interaction, type, client) {
   await interaction.editReply({ content: `✅ Ton ticket a été créé : <#${channel.id}>` });
 }
 
-// ─── FERMER AVEC RAISON (bouton + commande /close) ────────────────────────────
+//  FERMER 
 
 async function handleCloseWithReason(interaction, client) {
   const channel = interaction.channel;
@@ -219,7 +218,7 @@ async function handleCloseWithReason(interaction, client) {
     console.error(err);
     return interaction.editReply('❌ Erreur lors de la fermeture.');
   }
-  // ... reste identique
+  
 
   const closedEmbed = new EmbedBuilder()
     .setTitle('🔒 Ticket Fermé')
@@ -244,7 +243,7 @@ async function handleCloseWithReason(interaction, client) {
     extra: `📝 Raison : ${reason}`,
   });
 
-  // MP au créateur du ticket
+  // MP 
   if (data?.userId) {
     try {
       const ticketOwner = await client.users.fetch(data.userId);
@@ -258,12 +257,12 @@ async function handleCloseWithReason(interaction, client) {
 
       await ticketOwner.send({ embeds: [dmEmbed] });
     } catch {
-      // MPs fermés, on ignore
+      
     }
   }
 }
 
-// ─── RÉOUVRIR UN TICKET ──────────────────────────────────────────────────────
+//  RÉOUVRIR UN TICKET 
 
 async function handleReopen(interaction, client) {
   const channel = interaction.channel;
@@ -293,7 +292,7 @@ async function handleReopen(interaction, client) {
   await sendLog(client, { type: 'reopen', ticket: channel, user, category: data?.category || 'Inconnue' });
 }
 
-// ─── SUPPRIMER UN TICKET ─────────────────────────────────────────────────────
+//  SUPPRIMER UN TICKET 
 
 async function handleDelete(interaction, client) {
   const channel = interaction.channel;
@@ -309,7 +308,7 @@ async function handleDelete(interaction, client) {
   setTimeout(() => channel.delete().catch(console.error), 3000);
 }
 
-// ─── TRANSCRIPT ──────────────────────────────────────────────────────────────
+//  TRANSCRIPT 
 
 async function handleTranscript(interaction, client) {
   const channel = interaction.channel;
@@ -379,7 +378,7 @@ async function handleTranscript(interaction, client) {
   await interaction.editReply({ content: '✅ Transcript généré !', files: [file] });
 }
 
-// ─── HELPER STAFF ────────────────────────────────────────────────────────────
+//  HELPER STAFF 
 
 function isStaff(member) {
   if (!config.roles.staff) return member.permissions.has('ManageChannels');
