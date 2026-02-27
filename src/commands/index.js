@@ -22,6 +22,18 @@ module.exports = [
     .toJSON(),
 
   new SlashCommandBuilder()
+  .setName('rename')
+  .setDescription('Renomme le ticket actuel')
+  .addStringOption(opt =>
+    opt
+      .setName('nom')
+      .setDescription('Nouveau nom du ticket')
+      .setRequired(true)
+      .setMaxLength(50)
+  )
+  .toJSON(),
+
+  new SlashCommandBuilder()
     .setName('givesoutien')
     .setDescription('Réclame le rôle Soutien si discord.gg/aotsmp est dans ton statut Discord')
     .addStringOption(opt =>

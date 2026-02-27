@@ -34,6 +34,7 @@ async function sendLog(client, options) {
     delete: '🗑️ Ticket Supprimé',
     save_candid: '💾 Candidature Retenue',
     later: '⏳ Ticket Mis en Attente',
+    rename: '✏️ Ticket Renommé',
   };
 
   const embed = new EmbedBuilder()
