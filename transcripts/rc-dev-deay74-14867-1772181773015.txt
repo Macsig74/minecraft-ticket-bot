@@ -1,0 +1,33 @@
+═══════════════════════════════════════
+  TRANSCRIPT — #rc-dev-deay74-14867
+  Catégorie : Recrutement — Dev
+  Généré le : 27/02/2026 09:42:52
+  Par : deay74
+  Messages : 4
+═══════════════════════════════════════
+
+[27/02/2026 09:41:55] aot tickets#3677
+  <@1091839031056281751> <@&1468978871834509463>
+> 🎫 Nouveau ticket — réponds dans ce salon !
+  [EMBED] 💻 📋 Recrutement — Développeur
+  Ticket ouvert par <@1091839031056281751>
+Utilise les boutons ci-dessous pour gérer ce ticket.
+  • Ton pseudo Minecraft: test
+  • Ton âge & langages maîtrisés: test
+  • Tes réalisations passées / portfolio: test
+  • Disponibilités par semaine: test
+  • Pourquoi veux-tu nous rejoindre ?: test
+
+[27/02/2026 09:42:06] aot tickets#3677
+  [EMBED] 💾 Candidature Retenue
+  Cette candidature a été marquée comme **retenue** par <@1091839031056281751>.
+
+[27/02/2026 09:42:19] aot tickets#3677
+  [EMBED] ⏳ Ticket en Attente
+  Ce ticket a été mis en attente par <@1091839031056281751>.
+Un rappel a été posté dans <#1476622309098913925>.
+
+[27/02/2026 09:42:30] aot tickets#3677
+  [EMBED] 🔒 Ticket Fermé
+  Ce ticket a été fermé par <@1091839031056281751>.
+  • 📝 Raison: test

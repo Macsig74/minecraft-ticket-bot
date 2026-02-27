@@ -28,14 +28,14 @@ module.exports = {
 
  
   colors: {
-    recrutementDev: 0x5865F2,   // Bleu Discord
-    recrutementStaff: 0x57F287,  // Vert
-    recrutementAutre: 0xFEE75C,  // Jaune
-    bug: 0xED4245,               // Rouge
-    soutien: 0xEB459E,           // Rose
-    questions: 0x00B0F4,         // Bleu clair
-    autres: 0x99AAB5,            // Gris
-    log: 0x2B2D31,               // Sombre
+    recrutementDev: 0x5865F2,
+    recrutementStaff: 0x57F287,
+    recrutementAutre: 0xFEE75C,
+    bug: 0xED4245,
+    soutien: 0xEB459E,
+    questions: 0x00B0F4,
+    autres: 0x99AAB5,
+    log: 0x2B2D31,
     success: 0x57F287,
     danger: 0xED4245,
     warning: 0xFEE75C,

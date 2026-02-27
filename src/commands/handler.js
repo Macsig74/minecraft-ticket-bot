@@ -1,7 +1,7 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const config = require('../config');
 const { sendLog } = require('../utils/logger');
-const { sendTicketPanel } = require('../events/interactionCreate');
+const { sendTicketPanel, handleCloseModal } = require('../events/interactionCreate');
 const {
   closeTicket,
   saveCandidature,
@@ -16,58 +16,47 @@ function isStaff(member) {
 }
 
 module.exports = async function handleCommand(interaction, client) {
-  const { commandName, channel, member, user, guild } = interaction;
+  const { commandName, channel, member, user } = interaction;
 
-  //  /close 
+  // ── /close → ouvre le modal raison ──────────────────────────────────────────
+  // ── /close → ouvre le modal raison ──────────────────────────────────────────
   if (commandName === 'close') {
     if (!isStaff(member)) {
-      return interaction.reply({ content: '❌ Tu n\'as pas la permission de fermer ce ticket.', ephemeral: true });
+      return interaction.reply({ content: '❌ Tu n\'as pas la permission de fermer ce ticket.', flags: 64 });
     }
 
+    // Vérifie juste que c'est un salon texte avec un tiret dans le nom (format ticket)
+    // On retire la vérification stricte getTicketData pour les tickets déplacés
     const data = getTicketData(channel.id);
-    if (!data) {
-      return interaction.reply({ content: '❌ Ce salon n\'est pas un ticket géré par ce bot.', ephemeral: true });
+    if (!data && !channel.name.includes('-')) {
+      return interaction.reply({ content: '❌ Ce salon ne semble pas être un ticket.', flags: 64 });
     }
 
-    await interaction.deferReply();
+    const modal = new ModalBuilder()
+      .setCustomId('modal_close_reason_cmd')
+      .setTitle('Fermeture du ticket');
 
-    try {
-      await closeTicket(channel);
-    } catch (err) {
-      console.error(err);
-      return interaction.editReply('❌ Erreur lors de la fermeture.');
-    }
+    const input = new TextInputBuilder()
+      .setCustomId('close_reason')
+      .setLabel('Raison de la fermeture')
+      .setStyle(TextInputStyle.Paragraph)
+      .setPlaceholder('Ex: Problème résolu, candidature refusée...')
+      .setRequired(true)
+      .setMaxLength(500);
 
-    const embed = new EmbedBuilder()
-      .setTitle('🔒 Ticket Fermé')
-      .setDescription(`Ce ticket a été fermé par ${user}.\n\nTu peux le **réouvrir** ou le **supprimer** ci-dessous.`)
-      .setColor(0xED4245)
-      .setTimestamp();
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('ticket_reopen').setLabel('Réouvrir').setEmoji('🔓').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('ticket_delete').setLabel('Supprimer').setEmoji('🗑️').setStyle(ButtonStyle.Danger),
-    );
-
-    await interaction.editReply({ embeds: [embed], components: [row] });
-
-    await sendLog(client, {
-      type: 'close',
-      ticket: channel,
-      user,
-      category: data?.category || 'Inconnue',
-    });
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    return interaction.showModal(modal);
   }
 
-  //  /save-candid 
+  // ── /save-candid ─────────────────────────────────────────────────────────────
   if (commandName === 'save-candid') {
     if (!isStaff(member)) {
-      return interaction.reply({ content: '❌ Tu n\'as pas la permission d\'utiliser cette commande.', ephemeral: true });
+      return interaction.reply({ content: '❌ Tu n\'as pas la permission d\'utiliser cette commande.', flags: 64 });
     }
 
     const data = getTicketData(channel.id);
     if (!data || !data.category.toLowerCase().includes('recrutement')) {
-      return interaction.reply({ content: '❌ Ce salon n\'est pas un ticket de recrutement.', ephemeral: true });
+      return interaction.reply({ content: '❌ Ce salon n\'est pas un ticket de recrutement.', flags: 64 });
     }
 
     await interaction.deferReply();
@@ -86,19 +75,18 @@ module.exports = async function handleCommand(interaction, client) {
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
-
     await sendLog(client, { type: 'save_candid', ticket: channel, user, category: data.category });
   }
 
-  //  /later 
+  // ── /later ────────────────────────────────────────────────────────────────────
   if (commandName === 'later') {
     if (!isStaff(member)) {
-      return interaction.reply({ content: '❌ Tu n\'as pas la permission d\'utiliser cette commande.', ephemeral: 64 });
+      return interaction.reply({ content: '❌ Tu n\'as pas la permission d\'utiliser cette commande.', flags: 64 });
     }
 
     const data = getTicketData(channel.id);
     if (!data) {
-      return interaction.reply({ content: '❌ Ce salon n\'est pas un ticket géré par ce bot.', ephemeral: 64 });
+      return interaction.reply({ content: '❌ Ce salon n\'est pas un ticket géré par ce bot.', flags: 64 });
     }
 
     await interaction.deferReply();
@@ -134,17 +122,16 @@ module.exports = async function handleCommand(interaction, client) {
       .setTimestamp();
 
     await interaction.editReply({ embeds: [confirmEmbed] });
-
     await sendLog(client, { type: 'later', ticket: channel, user, category: data.category });
   }
 
-  //  /setup-tickets 
+  // ── /setup-tickets ────────────────────────────────────────────────────────────
   if (commandName === 'setup-tickets') {
     if (!member.permissions.has('Administrator')) {
-      return interaction.reply({ content: '❌ Seuls les administrateurs peuvent utiliser cette commande.', ephemeral: true });
+      return interaction.reply({ content: '❌ Seuls les administrateurs peuvent utiliser cette commande.', flags: 64 });
     }
 
-    await interaction.deferReply({ ephemeral: 64 });
+    await interaction.deferReply({ flags: 64 });
 
     try {
       await sendTicketPanel(channel);
@@ -154,10 +141,52 @@ module.exports = async function handleCommand(interaction, client) {
       await interaction.editReply('❌ Erreur lors de l\'envoi du panneau.');
     }
   }
+  // ── /rename ───────────────────────────────────────────────────────────────────
+if (commandName === 'rename') {
+  if (!isStaff(member)) {
+    return interaction.reply({ content: '❌ Tu n\'as pas la permission de renommer ce ticket.', flags: 64 });
+  }
 
-  //  /givesoutien 
+  const data = getTicketData(channel.id);
+  if (!data && !channel.name.includes('-')) {
+    return interaction.reply({ content: '❌ Ce salon ne semble pas être un ticket.', flags: 64 });
+  }
+
+  const newName = interaction.options.getString('nom')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 50);
+
+  await interaction.deferReply();
+
+  try {
+    await channel.setName(newName);
+  } catch (err) {
+    console.error(err);
+    return interaction.editReply('❌ Erreur lors du renommage.');
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle('✏️ Ticket Renommé')
+    .setDescription(`Ce ticket a été renommé en **\`${newName}\`** par ${user}.`)
+    .setColor(0x5865F2)
+    .setTimestamp();
+
+  await interaction.editReply({ embeds: [embed] });
+
+  await sendLog(client, {
+    type: 'rename',
+    ticket: channel,
+    user,
+    category: data?.category || 'Inconnue',
+    extra: `Nouveau nom : \`${newName}\``,
+  });
+}
+
+  // ── /givesoutien ──────────────────────────────────────────────────────────────
   if (commandName === 'givesoutien') {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     const pseudo = interaction.options.getString('pseudo');
 
@@ -200,3 +229,4 @@ module.exports = async function handleCommand(interaction, client) {
     return interaction.editReply({ embeds: [embed] });
   }
 };
+

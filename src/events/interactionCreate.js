@@ -5,8 +5,12 @@ const {
   ButtonStyle,
   ModalBuilder,
   TextInputBuilder,
+  TextInputStyle,
+  AttachmentBuilder,
 } = require('discord.js');
 
+const fs = require('fs');
+const path = require('path');
 const config = require('../config');
 const forms = require('../utils/forms');
 const { sendLog } = require('../utils/logger');
@@ -61,7 +65,7 @@ module.exports = {
         new ButtonBuilder().setCustomId('open_ticket_recrutement_autre').setLabel('Autre poste').setEmoji('📝').setStyle(ButtonStyle.Secondary),
       );
 
-      return interaction.reply({ embeds: [embed], components: [row], ephemeral: 64 });
+      return interaction.reply({ embeds: [embed], components: [row], flags: 64 });
     }
 
     // ── TOUS LES AUTRES BOUTONS D'OUVERTURE → modal ───────────────────────────
@@ -70,15 +74,38 @@ module.exports = {
       return openModal(interaction, type);
     }
 
-    // ── SOUMISSION MODAL ──────────────────────────────────────────────────────
+    // ── SOUMISSION MODALS TICKETS ─────────────────────────────────────────────
     if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_form_')) {
       const type = interaction.customId.replace('ticket_form_', '');
       return handleModalSubmit(interaction, type, client);
     }
 
-    // ── BOUTON FERMER TICKET ──────────────────────────────────────────────────
+    // ── BOUTON FERMER TICKET → modal raison ───────────────────────────────────
     if (interaction.isButton() && interaction.customId === 'ticket_close') {
-      return handleClose(interaction, client);
+      const modal = new ModalBuilder()
+        .setCustomId('modal_close_reason')
+        .setTitle('Fermeture du ticket');
+
+      const input = new TextInputBuilder()
+        .setCustomId('close_reason')
+        .setLabel('Raison de la fermeture')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Ex: Problème résolu, candidature refusée...')
+        .setRequired(true)
+        .setMaxLength(500);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      return interaction.showModal(modal);
+    }
+
+    // ── SOUMISSION MODAL RAISON FERMETURE (bouton) ────────────────────────────
+    if (interaction.isModalSubmit() && interaction.customId === 'modal_close_reason') {
+      return handleCloseWithReason(interaction, client);
+    }
+
+    // ── SOUMISSION MODAL RAISON FERMETURE (commande /close) ───────────────────
+    if (interaction.isModalSubmit() && interaction.customId === 'modal_close_reason_cmd') {
+      return handleCloseWithReason(interaction, client);
     }
 
     // ── BOUTON RÉOUVRIR ───────────────────────────────────────────────────────
@@ -94,7 +121,7 @@ module.exports = {
     // ── BOUTON TRANSCRIPT ─────────────────────────────────────────────────────
     if (interaction.isButton() && interaction.customId === 'ticket_transcript') {
       return handleTranscript(interaction, client);
-    } 
+    }
   },
 };
 
@@ -102,7 +129,7 @@ module.exports = {
 
 async function openModal(interaction, type) {
   const formDef = forms[type];
-  if (!formDef) return interaction.reply({ content: '❌ Type de ticket inconnu.', ephemeral: true });
+  if (!formDef) return interaction.reply({ content: '❌ Type de ticket inconnu.', flags: 64 });
 
   const modal = new ModalBuilder()
     .setCustomId(`ticket_form_${type}`)
@@ -125,10 +152,10 @@ async function openModal(interaction, type) {
   await interaction.showModal(modal);
 }
 
-// ─── TRAITEMENT SOUMISSION MODAL ─────────────────────────────────────────────
+// ─── TRAITEMENT SOUMISSION MODAL TICKET ──────────────────────────────────────
 
 async function handleModalSubmit(interaction, type, client) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: 64 });
 
   const formDef = forms[type];
   const guild = interaction.guild;
@@ -176,16 +203,13 @@ async function handleModalSubmit(interaction, type, client) {
   await interaction.editReply({ content: `✅ Ton ticket a été créé : <#${channel.id}>` });
 }
 
-// ─── FERMER UN TICKET ────────────────────────────────────────────────────────
+// ─── FERMER AVEC RAISON (bouton + commande /close) ────────────────────────────
 
-async function handleClose(interaction, client) {
+async function handleCloseWithReason(interaction, client) {
   const channel = interaction.channel;
   const user = interaction.user;
-  const data = getTicketData(channel.id);
-
-  if (!data && !channel.name.includes('-')) {
-    return interaction.reply({ content: '❌ Ce salon n\'est pas un ticket géré par ce bot.', ephemeral: true });
-  }
+  const data = getTicketData(channel.id); // peut être null si ticket déplacé, c'est ok
+  const reason = interaction.fields.getTextInputValue('close_reason');
 
   await interaction.deferReply();
 
@@ -193,12 +217,14 @@ async function handleClose(interaction, client) {
     await closeTicket(channel);
   } catch (err) {
     console.error(err);
-    return interaction.editReply('❌ Erreur lors de la fermeture du ticket.');
+    return interaction.editReply('❌ Erreur lors de la fermeture.');
   }
+  // ... reste identique
 
   const closedEmbed = new EmbedBuilder()
     .setTitle('🔒 Ticket Fermé')
-    .setDescription(`Ce ticket a été fermé par ${user}.\n\nTu peux le **réouvrir** ou le **supprimer** ci-dessous.`)
+    .setDescription(`Ce ticket a été fermé par ${user}.`)
+    .addFields({ name: '📝 Raison', value: reason })
     .setColor(0xED4245)
     .setTimestamp();
 
@@ -206,10 +232,35 @@ async function handleClose(interaction, client) {
     new ButtonBuilder().setCustomId('ticket_reopen').setLabel('Réouvrir').setEmoji('🔓').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId('ticket_transcript').setLabel('Transcript').setEmoji('📄').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('ticket_delete').setLabel('Supprimer').setEmoji('🗑️').setStyle(ButtonStyle.Danger),
-);
+  );
 
   await interaction.editReply({ embeds: [closedEmbed], components: [row] });
-  await sendLog(client, { type: 'close', ticket: channel, user, category: data?.category || 'Inconnue' });
+
+  await sendLog(client, {
+    type: 'close',
+    ticket: channel,
+    user,
+    category: data?.category || 'Inconnue',
+    extra: `📝 Raison : ${reason}`,
+  });
+
+  // MP au créateur du ticket
+  if (data?.userId) {
+    try {
+      const ticketOwner = await client.users.fetch(data.userId);
+      const dmEmbed = new EmbedBuilder()
+        .setTitle('🔒 Ton ticket a été fermé')
+        .setDescription(`Ton ticket **\`${channel.name}\`** a été fermé par ${user}.`)
+        .addFields({ name: '📝 Raison', value: reason })
+        .setColor(0xED4245)
+        .setTimestamp()
+        .setFooter({ text: 'AoT SMP • Support' });
+
+      await ticketOwner.send({ embeds: [dmEmbed] });
+    } catch {
+      // MPs fermés, on ignore
+    }
+  }
 }
 
 // ─── RÉOUVRIR UN TICKET ──────────────────────────────────────────────────────
@@ -220,7 +271,7 @@ async function handleReopen(interaction, client) {
   const data = getTicketData(channel.id);
 
   if (!isStaff(interaction.member)) {
-    return interaction.reply({ content: '❌ Seul le staff peut réouvrir un ticket.', ephemeral: true });
+    return interaction.reply({ content: '❌ Seul le staff peut réouvrir un ticket.', flags: 64 });
   }
 
   await interaction.deferReply();
@@ -250,7 +301,7 @@ async function handleDelete(interaction, client) {
   const data = getTicketData(channel.id);
 
   if (!isStaff(interaction.member)) {
-    return interaction.reply({ content: '❌ Seul le staff peut supprimer un ticket.', ephemeral: true });
+    return interaction.reply({ content: '❌ Seul le staff peut supprimer un ticket.', flags: 64 });
   }
 
   await sendLog(client, { type: 'delete', ticket: channel, user, category: data?.category || 'Inconnue' });
@@ -258,12 +309,7 @@ async function handleDelete(interaction, client) {
   setTimeout(() => channel.delete().catch(console.error), 3000);
 }
 
-// ─── HELPER STAFF ────────────────────────────────────────────────────────────
-
-function isStaff(member) {
-  if (!config.roles.staff) return member.permissions.has('ManageChannels');
-  return member.roles.cache.has(config.roles.staff) || member.permissions.has('Administrator');
-}
+// ─── TRANSCRIPT ──────────────────────────────────────────────────────────────
 
 async function handleTranscript(interaction, client) {
   const channel = interaction.channel;
@@ -276,7 +322,6 @@ async function handleTranscript(interaction, client) {
 
   await interaction.deferReply({ flags: 64 });
 
-  // Récupérer tous les messages
   const all = [];
   let before = undefined;
   while (true) {
@@ -288,7 +333,6 @@ async function handleTranscript(interaction, client) {
   }
   const messages = all.reverse();
 
-  // Générer le TXT
   const lines = [
     `═══════════════════════════════════════`,
     `  TRANSCRIPT — #${channel.name}`,
@@ -311,20 +355,12 @@ async function handleTranscript(interaction, client) {
     lines.push('');
   }
 
-  const txt = lines.join('\n');
-
-  // Sauvegarder et envoyer
-  const fs = require('fs');
-  const path = require('path');
-  const { AttachmentBuilder } = require('discord.js');
-
   const filePath = path.join(__dirname, '../../transcripts', `${channel.name}-${Date.now()}.txt`);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, txt, 'utf8');
+  fs.writeFileSync(filePath, lines.join('\n'), 'utf8');
 
   const file = new AttachmentBuilder(filePath, { name: `transcript-${channel.name}.txt` });
 
-  // Envoyer dans les logs aussi
   const logsChannel = client.channels.cache.get(config.channels.logs);
   if (logsChannel) {
     const logEmbed = new EmbedBuilder()
@@ -342,3 +378,14 @@ async function handleTranscript(interaction, client) {
 
   await interaction.editReply({ content: '✅ Transcript généré !', files: [file] });
 }
+
+// ─── HELPER STAFF ────────────────────────────────────────────────────────────
+
+function isStaff(member) {
+  if (!config.roles.staff) return member.permissions.has('ManageChannels');
+  return member.roles.cache.has(config.roles.staff) || member.permissions.has('Administrator');
+}
+
+module.exports.handleCloseModal = async function(interaction, client) {
+  return handleCloseWithReason(interaction, client);
+};
